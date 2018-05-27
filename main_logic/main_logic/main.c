@@ -9,6 +9,8 @@
 #include "io.c"
 #include "usart.h"
 
+//#define output (PORTC)
+
 //=======================Struct/Varibales=======================//
 typedef struct task {
 	int state; // Current state of the task
@@ -18,16 +20,19 @@ typedef struct task {
 } task;
 
 //=========TaskSetting===========//
-const unsigned char tasksNum = 2;
+const unsigned char tasksNum = 3;
 const unsigned long tasksPeriodGCD = 50;
-task tasks[2];
+task tasks[3];
 
 //=========Task Periods===========//
-const unsigned long Keypadperiod=1000;
-const unsigned long stuffperiod=900;
+const unsigned long Keypadperiod=400;
+const unsigned long stuffperiod=1000;
+const unsigned long outputperiod=200;
 
 //=========Shared Variables===========//
 char Data_in;
+char bluetoothOutput;
+char stuffOutput;
 
 
 //=======================Timer/Task scheduler=======================//
@@ -82,47 +87,46 @@ unsigned char GetBit(unsigned char x, unsigned char k) {
 }
 
 //=================bluetooth_SM=================//
-enum bluetooth_state{Bstart, Bkeypress};
+enum bluetooth_state{Bstart, receive};
 int Tick_bluetooth (int state){
-	switch(state){
+	switch(state){	//transitions
 		
 		case Bstart:
-		state=Bkeypress;
+		if(!USART_HasReceived(0)){
+			state = Bstart;
+		}else{
+			state = receive;
+		}
+		//state = Bstart;
+		
 		break;
 		
-		case Bkeypress:
-			Data_in = USART_Receive(0);						/* receive data from Bluetooth device*/
-			if(Data_in =='1')
-			{
-				PORTC = 0x01;									/* Turn ON LED */
-				USART_Send(0x01, 0);						/* send status of LED i.e. LED ON */
+		case receive:		
+		state = Bstart;
+		break;
 			
-			}
-			else if(Data_in =='2')
-			{
-				PORTC = 0x02;									/* Turn OFF LED */
-				USART_Send(0x02, 0);				/* send status of LED i.e. LED OFF */
-			}
-			else if(Data_in =='3')
-			{
-				PORTC = 0x04;									/* Turn OFF LED */
-				USART_Send(0x03, 0);				/* send status of LED i.e. LED OFF */
-			}else if(Data_in =='4')
-			{
-				PORTC = 0x08;									/* Turn OFF LED */
-				USART_Send(0x04, 0);				/* send status of LED i.e. LED OFF */
-			}else if(Data_in =='5')
-			{
-				PORTC = 0x10;									/* Turn OFF LED */
-				USART_Send(0x05, 0);				/* send status of LED i.e. LED OFF */
-			}
-			else{
-				PORTC = 0x00;
-				USART_Send(0x06, 0);	/* send message for selecting proper option */
-			}		
-		state=Bkeypress;
+	}
+	
+	switch(state){		//actions
+		case Bstart:
 		break;
 		
+		case receive:
+		Data_in = USART_Receive(0);						/* receive data from Blue-tooth device*/
+		if(Data_in =='1'){
+			bluetoothOutput = 0x01;									/* Turn ON LED */
+			}else if(Data_in =='2'){
+			bluetoothOutput = 0x02;									/* Turn OFF LED */
+			}else if(Data_in =='3'){
+			bluetoothOutput = 0x04;									/* Turn OFF LED */
+			}else if(Data_in =='4'){
+			bluetoothOutput = 0x08;									/* Turn OFF LED */
+			}else if(Data_in =='5'){
+			bluetoothOutput = 0x10;									/* Turn OFF LED */
+			}else{
+			bluetoothOutput = 0x00;
+		}
+		break;
 	}
 	return state;
 }
@@ -132,13 +136,23 @@ enum stuff{start, start1};
 int Tick_stuff (int state){
 	switch(state){
 		case start:
-		PORTC = PORTC | 0x40;
+		stuffOutput = 0x04;
 		state = start1;
 		break;
 		
 		case start1:
-		PORTC = PORTC | 0x80;
+		stuffOutput = 0x08;
 		state = start;
+		break;	
+	}
+	return state;
+}
+
+enum output{O_start};
+int Tick_output(int state){
+	switch(state){
+		case O_start:
+		PORTC = (stuffOutput << 4) | bluetoothOutput;
 		break;	
 	}
 	return state;
@@ -157,6 +171,11 @@ int main(void)
 	tasks[i].period = stuffperiod;
 	tasks[i].elapsedTime = tasks[i].period;
 	tasks[i].TickFct = &Tick_stuff;
+	i++;
+	tasks[i].state = O_start;
+	tasks[i].period = outputperiod;
+	tasks[i].elapsedTime = tasks[i].period;
+	tasks[i].TickFct = &Tick_output;
 	
 	//=========Setting Ports===========//
 	DDRC = 0xFF; PORTC = 0x00; // LCD data lines
