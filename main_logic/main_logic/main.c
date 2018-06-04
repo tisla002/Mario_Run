@@ -5,9 +5,14 @@
  * Author : takbi
  */ 
 
-#include <avr/io.h>
+#include <avr/io.h>      //IO header
+//#define F_CPU 11059200UL //defining crystal frequency
+#include <util/delay.h>  //delay header
+
+
 #include "io.c"
 #include "usart.h"
+#include "shift.h"
 
 //#define output (PORTC)
 
@@ -20,19 +25,21 @@ typedef struct task {
 } task;
 
 //=========TaskSetting===========//
-const unsigned char tasksNum = 3;
-const unsigned long tasksPeriodGCD = 50;
-task tasks[3];
+const unsigned char tasksNum = 2;
+const unsigned long tasksPeriodGCD = 10;
+task tasks[2];
 
 //=========Task Periods===========//
-const unsigned long Keypadperiod=400;
-const unsigned long stuffperiod=1000;
-const unsigned long outputperiod=200;
+const unsigned long Keypadperiod=2;
+const unsigned long stuffperiod=2;
+//const unsigned long outputperiod=200;
 
 //=========Shared Variables===========//
 char Data_in;
 char bluetoothOutput;
 char stuffOutput;
+
+static char output = 0;
 
 
 //=======================Timer/Task scheduler=======================//
@@ -113,42 +120,147 @@ int Tick_bluetooth (int state){
 		
 		case receive:
 		Data_in = USART_Receive(0);						/* receive data from Blue-tooth device*/
-		if(Data_in =='1'){
-			bluetoothOutput = 0x01;									/* Turn ON LED */
-			}else if(Data_in =='2'){
-			bluetoothOutput = 0x02;									/* Turn OFF LED */
+		if(Data_in =='2'){
+			if(bluetoothOutput < 120){
+				bluetoothOutput++;
+			}else{
+				bluetoothOutput = 0;
+			}			
+			Data_in = 0x00;									/* Turn ON LED */
+		}else if(Data_in =='1'){
+			if(bluetoothOutput > 0){
+				bluetoothOutput--;
+			}else{
+				bluetoothOutput = 0;
+			}
+			Data_in = 0x00;
+		}else{
+			bluetoothOutput = 0;
+		}
+		/*else if(Data_in =='2'){
+			bluetoothOutput = 0x02;									/* Turn OFF LED /
 			}else if(Data_in =='3'){
-			bluetoothOutput = 0x04;									/* Turn OFF LED */
+			bluetoothOutput = 0x03;									/* Turn OFF LED /
 			}else if(Data_in =='4'){
-			bluetoothOutput = 0x08;									/* Turn OFF LED */
+			bluetoothOutput = 0x04;									/* Turn OFF LED /
 			}else if(Data_in =='5'){
-			bluetoothOutput = 0x10;									/* Turn OFF LED */
+			bluetoothOutput = 0x05;									/* Turn OFF LED /
 			}else{
 			bluetoothOutput = 0x00;
-		}
+		}*/
 		break;
 	}
 	return state;
+}
+
+void LED_Matrix(){
+	
+	char PORT[8] = {1,2,4,8,16,32,64,128}; //pin values of a port 2^0,2^1,2^2……2^7
+		
+	uint8_t l =0;
+	
+	char SCROLL_RED[] = {0b00000000,0b00000000,0b01000000,0b11000000,0b01000000,0b00000000,0b00000000,0b00001000,0b00000000,0b00001000,0b00101000,0b00001000,0b00000000,0b00000000,0b00000000,0b00000000,0b10000000,0b11000000,0b01000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00001000,0b00000000,0b00000000,0b01000000,0b11000000,0b11100000,0b01000000,0b00000000,0b00000100,0b00000100,0b00010000,0b00010000,0b00010000,0b00010000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00010000,0b00010100,0b00000000,0b00000000,0b01001000,0b11001000,0b11000000,0b10000000,0b00001000,0b00000000,0b00101000,0b00000000,0b00001000,0b00000000,0b00000000,0b00100000,0b00100000,0b00000000,0b00000000,0b00101000,0b00100000,0b00000000,0b00000000,0b00000010,0b00000110,0b00001110,0b00000000,0b00001110,0b00000110,0b01000010,0b11000000,0b01000000,0b00000010,0b00000110,0b00001110,0b00001110,0b00000000,0b00001110,0b00000110,0b00000010,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00001000,0b00001000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000010,0b00000110,0b00001110,0b00011110,0b00011110,0b00000000,0b01000000,0b11100000,0b11100010,0b01000000,0b00000000,0b00001110,0b00111110,0b00011000,0b00111110,0b00001110};
+	char SCROLL[] = {0b00000001,0b00000001,0b01000001,0b11000001,0b01000001,0b00000001,0b00000001,0b00001001,0b00000001,0b00001001,0b00101001,0b00001001,0b00000001,0b00000001,0b00000001,0b00000001,0b10000111,0b11000111,0b01000001,0b00000001,0b00000001,0b00001111,0b00001111,0b00000001,0b00000001,0b00001111,0b00001111,0b00000001,0b00000001,0b00001111,0b00001111,0b00000001,0b00000001,0b00001001,0b00000001,0b00000001,0b01000001,0b11000001,0b11100000,0b01000000,0b00000001,0b00000101,0b00000101,0b00010001,0b00010001,0b00010001,0b00010001,0b00000001,0b00000001,0b00000000,0b00000000,0b00000000,0b00010001,0b00010101,0b00000001,0b00000001,0b01001001,0b11001001,0b11000001,0b10000001,0b00001001,0b00000001,0b00101001,0b00000001,0b00001001,0b00000001,0b00000001,0b00100001,0b00100001,0b00000001,0b00000001,0b00101001,0b00100001,0b00000001,0b00000001,0b00000011,0b00000111,0b00001111,0b00000001,0b00001111,0b00000111,0b01000011,0b11000001,0b01000001,0b00000011,0b00000111,0b00001111,0b00001111,0b00000000,0b00001111,0b00000111,0b00000011,0b00000001,0b00000111,0b00000111,0b00000001,0b00000001,0b00001001,0b00001001,0b00000001,0b00000001,0b00000001,0b00000111,0b00000111,0b00000011,0b00000111,0b00001111,0b00011111,0b00011111,0b00000001,0b01000001,0b11100001,0b11100011,0b01000001,0b00000001,0b00000001,0b00000001,0b00000001,0b00000001,0b00000001};
+	char SCROLL_BLUE[] = {0b00000000,0b00000000,0b01000000,0b11000000,0b01000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b10000000,0b11000000,0b01000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b01000000,0b11000000,0b11100000,0b01000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b01000000,0b11000000,0b11000000,0b10000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b01000000,0b11000000,0b01000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b01000000,0b11100000,0b11100000,0b01000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000,0b00000000};
+
+	//char CHARAC[] = { 0b00000010, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000, 0b00000000 };
+	
+	
+		if(i < 8){
+			PORTC = PORT[i];
+			
+			char pos = 0;
+			
+			if(i == 1){
+				pos = 0b00000010;
+			}else{
+				pos = 0b00000000;
+			}
+			
+			
+			char temp = SCROLL[i+bluetoothOutput] | SCROLL_RED[i+bluetoothOutput] | SCROLL_BLUE[i+bluetoothOutput];
+						
+			char temp1;
+			
+			if(GetBit(temp, 1)){
+				if(i == 1){
+					pos = 0b00000100;
+					
+					if(GetBit(temp, 2)){
+						if(i == 1){
+							pos = 0b00001000;
+							
+							if(GetBit(temp, 3)){
+								if(i == 1){
+									pos = 0b00010000;
+									
+									if(GetBit(temp, 4)){
+										if(i == 1){
+											pos = 0b00100000;
+										}else{
+											pos = 0b00000000;
+										}
+									}
+									
+								}else{
+									pos = 0b00000000;
+								}
+							}
+							
+						}else{
+							pos = 0b00000000;
+						}
+					}
+					
+				}else{
+					pos = 0b00000000;
+				}
+			}
+			
+			temp1 = temp | pos;
+			char temp2 = ~temp1;
+			PORTA = temp2;
+			i++;
+			
+		}else{
+			i = 0;
+		}
+	
 }
 
 //=================random_SM=================//
-enum stuff{start, start1};
+enum stuff{start, displayScreen};
 int Tick_stuff (int state){
+	
+	
 	switch(state){
 		case start:
-		stuffOutput = 0x04;
-		state = start1;
+		state = displayScreen;
 		break;
 		
-		case start1:
-		stuffOutput = 0x08;
+		case displayScreen:
+		state = displayScreen;
+		break;
+				
+		default:
 		state = start;
-		break;	
+		break;
+	}
+	
+	switch(state){
+		case start:
+		break;
+		
+		case displayScreen:
+		LED_Matrix();
+		break;
+		
+		
 	}
 	return state;
 }
 
-enum output{O_start};
+/*enum output{O_start};
 int Tick_output(int state){
 	switch(state){
 		case O_start:
@@ -156,7 +268,7 @@ int Tick_output(int state){
 		break;	
 	}
 	return state;
-}
+}*/
 
 int main(void)
 {
@@ -171,14 +283,18 @@ int main(void)
 	tasks[i].period = stuffperiod;
 	tasks[i].elapsedTime = tasks[i].period;
 	tasks[i].TickFct = &Tick_stuff;
-	i++;
+	/*i++;
 	tasks[i].state = O_start;
 	tasks[i].period = outputperiod;
 	tasks[i].elapsedTime = tasks[i].period;
-	tasks[i].TickFct = &Tick_output;
+	tasks[i].TickFct = &Tick_output;*/
 	
 	//=========Setting Ports===========//
-	DDRC = 0xFF; PORTC = 0x00; // LCD data lines
+	//DDRC = 0xFF; PORTC = 0x00; // LCD data lines
+	
+	DDRA = 0xFF; //PORTA as output
+	DDRC = 0xFF; //PORTC as output
+
 	
 	//=========Timing===========//
 	TimerSet(tasksPeriodGCD);
