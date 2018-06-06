@@ -8,6 +8,7 @@
 #include <avr/io.h>      //IO header
 //#define F_CPU 11059200UL //defining crystal frequency
 #include <util/delay.h>  //delay header
+#include <avr/eeprom.h>
 
 
 #include "io.c"
@@ -50,9 +51,8 @@ char GameEnd = 0x00;
 char gameScore = 0x00;
 char scorePrint = 0x00;
 
-static unsigned int timeElap = 0;
+static unsigned char timeElap = 0;
 
-static char output = 0;
 
 
 //=======================Timer/Task scheduler=======================//
@@ -109,7 +109,7 @@ unsigned char GetBit(unsigned char x, unsigned char k) {
 //=================bluetooth_SM=================//
 enum bluetooth_state{Bstart, receive};
 int Tick_bluetooth (int state){
-	timeElap += 100;
+	
 	
 	switch(state){	//transitions
 		
@@ -454,24 +454,27 @@ int Tick_displayLCD(int state){
 		{			
 			LCD_Commands(0xC0);
 			LCD_String("You Lasted:");
-			if (timeElap < 5000)
+			unsigned char scor = 0;
+			
+			eeprom_read_byte(scor);
+			
+			if (scor == 5)
 			{
 				LCD_String("5");
 				
-			}else if (timeElap < 10000)
+			}else if (scor == 10)
 			{
 				LCD_String("10");
-			}else if (timeElap < 15000)
-			{
-				LCD_String("15");
-			}else if (timeElap < 20000)
+			}else if (scor == 20)
 			{
 				LCD_String("20");
+			}else if (scor == 30)
+			{
+				LCD_String("30");
 			}	
 			else{
-				LCD_String("20+");
+				LCD_String("30+");
 			}
-			timeElap = 0;
 		}
 		
 		
@@ -488,6 +491,15 @@ int Tick_displayLCD(int state){
 
 enum song{songStart, songPlay};
 int Tick_song(int state){
+	if( bluetoothOutput < 20){
+		eeprom_write_byte(timeElap, 5);
+	}else if( bluetoothOutput < 50){
+		eeprom_write_byte(timeElap, 10);	
+	}else if( bluetoothOutput < 100){
+		eeprom_write_byte(timeElap, 20);
+	}else if( bluetoothOutput < 150){
+		eeprom_write_byte(timeElap, 30);
+	} 
 	
 	static char songCount = 0;
 	static long songTime = 0;
@@ -530,7 +542,7 @@ int Tick_song(int state){
 		case songPlay:
 		
 		
-		if(songCount < 73){
+		if(songCount < 91){//73 or 91
 			
 			if (songTime == duration[songCount])
 			{
@@ -589,7 +601,6 @@ int main(void)
 	tasks[i].TickFct = &Tick_song;
 	
 	//=========Setting Ports===========//
-	//DDRC = 0xFF; PORTC = 0x00; // LCD data lines
 	
 	DDRA = 0xFF; //PORTA as output
 	DDRC = 0xFF; //PORTC as output
@@ -602,11 +613,10 @@ int main(void)
 	TimerSet(tasksPeriodGCD);
 	TimerOn();
 	
-	//=========USART===========//
+	//=========INIT===========//
 	initUSART(0);
 	LCD_Init();
-	PWM_on();	
-	//LCD_String("hello world");
+	PWM_on();
 	
 	while(1) {
 		
