@@ -34,7 +34,7 @@ task tasks[5];
 const unsigned long BluetoothPeriod=2;
 const unsigned long DisplayPeriod=2;
 const unsigned long outputperiod=2;
-const unsigned long LCDdisplayPeriod = 100;
+const unsigned long LCDdisplayPeriod = 50;
 const unsigned long songPeriod = 100;
 
 //=========Shared Variables===========//
@@ -46,6 +46,7 @@ char displayOutput_PortA;
 static char print = 0x00;
 char GameStart = 0x00;
 char scorePrint = 0x00;
+
 
 
 static char output = 0;
@@ -166,7 +167,7 @@ int Tick_bluetooth (int state){
 			Data_in = 0x00;
 		}else if (Data_in == '4'){
 			if(bluetoothOutput_y < 6){
-				bluetoothOutput_y++;
+				bluetoothOutput_y+= 2;
 				bluetoothOutput++;
 			}else{
 				bluetoothOutput_y = 0;
@@ -185,7 +186,7 @@ int Tick_bluetooth (int state){
 
 
 //=================display_SM=================//
-enum display{start, displayMap, displayChar};
+enum display{start, displayMap, displayChar, check};
 int Tick_display (int state){
 	
 	char PORT[8] = {1,2,4,8,16,32,64,128}; //pin values of a port 2^0,2^1,2^2……2^7
@@ -196,6 +197,10 @@ int Tick_display (int state){
 
 	static char temp;
 	static char pos;
+	
+	
+	static unsigned char checkifcheck = 0x00;
+	
 	
 	unsigned char num;
 	
@@ -217,7 +222,23 @@ int Tick_display (int state){
 		break;
 		
 		case displayChar:
-		state = displayMap;
+		if(GameStart == 0x01 && checkifcheck == 32){
+			checkifcheck = 0;
+			state = check;
+		}else if(GameStart == 1 && checkifcheck != 32){
+			checkifcheck += 2;
+			state = displayMap;
+		}else{
+			state = start;
+		}
+		break;
+		
+		case check:
+		if(GameStart == 0x01 ){
+			state = displayMap;
+		}else{
+			state = start;
+		}
 		break;
 		
 				
@@ -247,7 +268,8 @@ int Tick_display (int state){
 		
 		case displayChar:	
 		pos = 0;
-				
+		
+						
 		if (bluetoothOutput_y == 1 && i == 1)
 		{
 			num = 2;
@@ -288,13 +310,28 @@ int Tick_display (int state){
 			
 		}
 		
-		
 		displayOutput_PortA =  ~(pos | temp);	
+		break;
+		
+		
+		
+		case check:
+		if (i == 1)
+		{
+			char underneath = SCROLL[i+bluetoothOutput-1] | SCROLL_RED[i+bluetoothOutput-1] | SCROLL_BLUE[i+bluetoothOutput-1];
+			
+			if (!GetBit(underneath, num - 1))
+			{
+				bluetoothOutput_y--;
+			}
+		}		
 		break;
 		
 		
 			
 	}
+	
+	
 	
 	return state;
 }
@@ -380,7 +417,10 @@ int Tick_displayLCD(int state){
 		LCD_Clear();
 		LCD_Commands(0x01);
 		LCD_String("Score is ");
-		LCD_Char(scoreTemp);
+		
+		LCD_String_xy(1, 7, 9);
+		LCD_Char(49 + scoreTemp);
+		
 		scoreTemp++;
 		break;
 		
