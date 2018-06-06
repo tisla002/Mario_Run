@@ -4,8 +4,8 @@ This is my class project for CS120B Embedded Systems course at UCR. This project
 It uses the Bluetooth Module to communicate with AtMega1284 and another device, specifically for this project I am using an Andriod App which acts as the gamepad instead of physical buttons.
 
 Complexities used in this project:
-Led Matrix
-Bluetooth
-EEPROM
-LCD 4-Pin DATA
-Core Game Logic
+* Led Matrix
+* Bluetooth
+* EEPROM
+* LCD 4-Pin DATA
+* Core Game Logic
