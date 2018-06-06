@@ -45,9 +45,12 @@ char displayOutput_PortC;
 char displayOutput_PortA;
 static char print = 0x00;
 char GameStart = 0x00;
+char GameFinised = 0x00;
+char GameEnd = 0x00;
+char gameScore = 0x00;
 char scorePrint = 0x00;
 
-
+static unsigned int timeElap = 0;
 
 static char output = 0;
 
@@ -106,6 +109,8 @@ unsigned char GetBit(unsigned char x, unsigned char k) {
 //=================bluetooth_SM=================//
 enum bluetooth_state{Bstart, receive};
 int Tick_bluetooth (int state){
+	timeElap += 100;
+	
 	switch(state){	//transitions
 		
 		case Bstart:
@@ -135,6 +140,7 @@ int Tick_bluetooth (int state){
 			if (Data_in == '5')
 			{
 				GameStart = 0x01;
+				GameEnd = 0x00;
 				print = 0x01;
 			}
 			break;
@@ -142,6 +148,7 @@ int Tick_bluetooth (int state){
 			if (Data_in == '5')
 			{
 				GameStart = 0x00;
+				GameEnd = 0x00;
 				print = 0x00;
 				bluetoothOutput = 0;
 				bluetoothOutput_y = 0;
@@ -158,14 +165,15 @@ int Tick_bluetooth (int state){
 				bluetoothOutput = 0;
 			}			
 			Data_in = 0x00;									/* Turn ON LED */
-		}else if(Data_in =='1'){
+		}/*else if(Data_in =='1'){
 			if(bluetoothOutput > 0){
 				bluetoothOutput--;
 			}else{
 				bluetoothOutput = 0;
 			}
 			Data_in = 0x00;
-		}else if (Data_in == '4'){
+		}*/
+		else if (Data_in == '4'){
 			if(bluetoothOutput_y < 6){
 				bluetoothOutput_y+= 2;
 				bluetoothOutput++;
@@ -206,7 +214,7 @@ int Tick_display (int state){
 	
 	switch(state){
 		case start:
-		if(GameStart == 0x01){
+		if(GameStart == 0x01 && GameEnd != 0x01){
 			state = displayMap;
 		}else{
 			state = start;	
@@ -214,7 +222,10 @@ int Tick_display (int state){
 		break;
 		
 		case displayMap:
-		if(GameStart == 0x01){
+		if (GameEnd == 0x01)
+		{
+			state = start;
+		}else if(GameStart == 0x01){
 			state = displayChar;
 		}else{
 			state = start;
@@ -222,7 +233,10 @@ int Tick_display (int state){
 		break;
 		
 		case displayChar:
-		if(GameStart == 0x01 && checkifcheck == 32){
+		if (GameEnd == 0x01)
+		{
+			state = start;
+		}else if(GameStart == 0x01 && checkifcheck == 32){
 			checkifcheck = 0;
 			state = check;
 		}else if(GameStart == 1 && checkifcheck != 32){
@@ -251,7 +265,7 @@ int Tick_display (int state){
 		case start:
 		break;
 		
-		case displayMap:	
+		case displayMap:		
 		if(i < 8){
 			displayOutput_PortC = PORT[i];
 						
@@ -268,8 +282,13 @@ int Tick_display (int state){
 		
 		case displayChar:	
 		pos = 0;
-		
-						
+					
+		if (bluetoothOutput >= 115)
+		{
+			GameEnd = 0x01;
+			GameFinised = 0x01;
+		}
+								
 		if (bluetoothOutput_y == 1 && i == 1)
 		{
 			num = 2;
@@ -307,8 +326,8 @@ int Tick_display (int state){
 		{
 			--bluetoothOutput;
 			temp = SCROLL[i+bluetoothOutput] | SCROLL_RED[i+bluetoothOutput] | SCROLL_BLUE[i+bluetoothOutput];
-			
 		}
+		
 		
 		displayOutput_PortA =  ~(pos | temp);	
 		break;
@@ -316,6 +335,12 @@ int Tick_display (int state){
 		
 		
 		case check:
+		if(i == 1){
+			if(!GetBit(temp, 0) && pos == 0b00000010){
+				GameEnd = 0x01;
+			}
+		}
+		
 		if (i == 1)
 		{
 			char underneath = SCROLL[i+bluetoothOutput-1] | SCROLL_RED[i+bluetoothOutput-1] | SCROLL_BLUE[i+bluetoothOutput-1];
@@ -351,7 +376,7 @@ int Tick_output(int state){
 	return state;
 }
 
-enum display_LCD{dis_init, print_once, wait, print_score};
+enum display_LCD{dis_init, print_once, wait, print_score, print_end};
 int Tick_displayLCD(int state){
 	static char scoreTemp = 48;
 	
@@ -374,10 +399,11 @@ int Tick_displayLCD(int state){
 		break;
 		
 		case wait:
-		if(GameStart == 00){
-			state = dis_init;
-		}else if(scorePrint == 0x01){
+		if (GameEnd == 0x01)
+		{
 			state = print_score;
+		}else if(GameStart == 00){
+			state = dis_init;
 		}else{
 			state = wait;
 		}		
@@ -407,7 +433,7 @@ int Tick_displayLCD(int state){
 		LCD_Commands(0x01);	
 		LCD_String("WELCOME TO");
 		LCD_Commands(0xC0);
-		LCD_String("Mario_Run");
+		LCD_String("Mario_Run");	
 		break;
 		
 		case wait:
@@ -416,13 +442,44 @@ int Tick_displayLCD(int state){
 		case print_score:
 		LCD_Clear();
 		LCD_Commands(0x01);
-		LCD_String("Score is ");
 		
-		LCD_String_xy(1, 7, 9);
-		LCD_Char(49 + scoreTemp);
+		if (GameFinised == 0x01)
+		{
+			LCD_String("Game Finished");
+		}else{
+			LCD_String("Game Over");
+		}
+		
+		if (GameEnd == 0x01)
+		{			
+			LCD_Commands(0xC0);
+			LCD_String("You Lasted:");
+			if (timeElap < 5000)
+			{
+				LCD_String("5");
+				
+			}else if (timeElap < 10000)
+			{
+				LCD_String("10");
+			}else if (timeElap < 15000)
+			{
+				LCD_String("15");
+			}else if (timeElap < 20000)
+			{
+				LCD_String("20");
+			}	
+			else{
+				LCD_String("20+");
+			}
+			timeElap = 0;
+		}
+		
 		
 		scoreTemp++;
+		
 		break;
+		
+		
 		
 	}
 	
