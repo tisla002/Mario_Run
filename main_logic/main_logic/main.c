@@ -358,11 +358,19 @@ int Tick_displayLCD(int state){
 	
 	switch(state){
 		case dis_init:
-		LCD_Clear();		
+		LCD_Clear();
+		LCD_Commands(0x01);	
+		LCD_String("Press Start to");
+		LCD_Commands(0xC0);	
+		LCD_String("Play");
 		break;
 		
 		case print_once:
-		LCD_String("WELCOME TO MARIO");
+		LCD_Clear();
+		LCD_Commands(0x01);	
+		LCD_String("WELCOME TO");
+		LCD_Commands(0xC0);
+		LCD_String("Mario_Run");
 		break;
 		
 		case wait:
@@ -370,6 +378,7 @@ int Tick_displayLCD(int state){
 		
 		case print_score:
 		LCD_Clear();
+		LCD_Commands(0x01);
 		LCD_String("Score is ");
 		LCD_Char(scoreTemp);
 		scoreTemp++;
@@ -384,16 +393,19 @@ enum song{songStart, songPlay};
 int Tick_song(int state){
 	
 	static char songCount = 0;
+	static long songTime = 0;
+	static long songSleep = 0;
+	
 	
 	switch(state){
 		case songStart:
-		//if (GameStart == 0x01)
-		//{
-		//	state = songPlay;
-		//}else{
-		//	PWM_off();
+		if (GameStart == 0x01)
+		{
+			state = songPlay;
+		}else{
+			//PWM_off();
 			state = songStart;
-		//}
+		}
 		break;
 		
 		case songPlay:
@@ -413,14 +425,32 @@ int Tick_song(int state){
 	switch(state){
 		
 		case songStart:
-		PWM_on();
+		songCount = 0;
+		songTime = 0;
+		songSleep = 0;
 		break;
 		
 		case songPlay:
+		
+		
 		if(songCount < 73){
-			set_PWM(note[songCount]);
 			
-			songCount++;
+			if (songTime == duration[songCount])
+			{
+				set_PWM(0);
+				if(songSleep == sleep[songCount]){
+					songTime = 0;
+					songCount++;
+					songSleep = 0;
+				}else{
+					
+					songSleep += 50;
+				}	
+				
+			}else{
+				set_PWM(note[songCount]);
+				songTime += 50;
+			}
 		}else{
 			songCount = 0;
 		}
@@ -467,6 +497,8 @@ int main(void)
 	DDRA = 0xFF; //PORTA as output
 	DDRC = 0xFF; //PORTC as output
 	
+	DDRB=0xFF; PORTB = 0x00;
+	
 
 	
 	//=========Timing===========//
@@ -475,7 +507,8 @@ int main(void)
 	
 	//=========USART===========//
 	initUSART(0);
-	LCD_Init();	
+	LCD_Init();
+	PWM_on();	
 	//LCD_String("hello world");
 	
 	while(1) {
