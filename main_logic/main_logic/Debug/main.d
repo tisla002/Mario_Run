@@ -19,7 +19,9 @@ main.d main.o: .././main.c \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\lib\gcc\avr\5.4.0\include\stdarg.h \
  c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\lib\gcc\avr\5.4.0\include\stddef.h \
  ../../../../../includes/io.h ../../../../../includes/usart.h \
- ../../../../../includes/shift.h
+ ../../../../../includes/shift.h \
+ ../../../../../includes/4bit_mode_display.c \
+ ../../../../../includes/song.c
 
 c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\io.h:
 
@@ -64,3 +66,7 @@ c:\program\ files\ (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\lib\
 ../../../../../includes/usart.h:
 
 ../../../../../includes/shift.h:
+
+../../../../../includes/4bit_mode_display.c:
+
+../../../../../includes/song.c:
