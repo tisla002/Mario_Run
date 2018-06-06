@@ -52,9 +52,9 @@ void TimerOff() {
 	TCCR1B 	= 0x00; // bit3bit2bit1bit0=0000: timer off
 }
 
-//void TimerISR() {
-//	TimerFlag = 1;
-//}
+void TimerISR() {
+	TimerFlag = 1;
+}
 
 // In our approach, the C programmer does not touch this ISR, but rather TimerISR()
 ISR(TIMER1_COMPA_vect)

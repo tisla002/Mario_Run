@@ -113,6 +113,7 @@ unsigned char USART_Receive(unsigned char usartNum)
 		while ( !(UCSR1A & (1 << RXC1)) );
 		return UDR1;
 	}
+	
 }
 
 #endif //USART_1284_H
