@@ -9,3 +9,5 @@ Complexities used in this project:
 * EEPROM
 * LCD 4-Pin DATA
 * Core Game Logic
+
+Github Link: https://github.com/tisla002/cs120B_final_project
