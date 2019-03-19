@@ -1,4 +1,4 @@
-# CS120B Final Project
+# Mario Run!
 
 ## Introduction
 Mario Run is a side-scrolling game inspired by Super Mario Bros. The objective of the game is to move the player to the end of the level by crossing obstacles and barriers. The player controls the character using a bluetooth controller and jumps across obstacles to reach the end of the level in the fastest time possible while trying not to die. The game itself is displayed on LED Matrix, while information pertaining to the game (score etc.) is displayed on a LCD screen. There is Mario music playing while the game is running, and the bluetooth controller includes jump, move, start, and reset buttons.
