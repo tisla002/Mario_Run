@@ -37,8 +37,9 @@ State Machine functionality left out of images, all images are within images fol
 
 ### Incomplete complexities:
 * Nokia 5110 (wouldn’t arrive on time, changed to LED Matrix)
-* Youtube Link
-* CS 120B Project Youtube Link
+
+## Video
+CS 120B Project Youtube [Link](https://youtu.be/u_sordWC2No)
 
 ## Known Bugs and Shortcomings
 * After you reset the game, sometimes only one LED in the Matrix is still lit up. I believe that this is caused be me not resetting the Row and Column outputs properly.
